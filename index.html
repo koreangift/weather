@@ -36,8 +36,29 @@
       0%, 100% { transform: scale(1); filter: drop-shadow(0 0 1px #ffc83d40); }
       50% { transform: scale(1.17); filter: drop-shadow(0 0 5px #ffbf00d9); }
     }
+    .rain-fall { position: relative; display: inline-block; }
+    .rain-fall::before, .rain-fall::after {
+      content: '';
+      position: absolute;
+      top: 58%;
+      width: 2px;
+      height: 5px;
+      border-radius: 2px;
+      background: #1689d8;
+      opacity: 0;
+      pointer-events: none;
+      animation: rainfall .85s linear infinite;
+    }
+    .rain-fall::before { left: 34%; }
+    .rain-fall::after { left: 62%; animation-delay: -.43s; }
+    @keyframes rainfall {
+      0% { transform: translate(1px, 0) rotate(14deg); opacity: 0; }
+      25% { opacity: .95; }
+      73% { opacity: .8; }
+      100% { transform: translate(-2px, 12px) rotate(14deg); opacity: 0; }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .sun-sparkle { animation: none; }
+      .sun-sparkle, .rain-fall::before, .rain-fall::after { animation: none; }
     }
     .district-pin { display: grid; align-content: center; justify-items: center; gap: 1px; font: 21px/15px 'Dongle', system-ui, sans-serif; white-space: nowrap; border-radius: 11px; }
     .district-pin-content { display: grid; gap: 1px; }
@@ -294,6 +315,7 @@
       const icon = document.createElement('span');
       icon.textContent = symbol;
       if (symbol === '☀️') icon.className = 'sun-sparkle';
+      if (symbol === '🌧️' || symbol === '⛈️') icon.className = 'rain-fall';
       return icon;
     }
 
