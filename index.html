@@ -59,7 +59,18 @@
       <feComposite in="redGreenMatch" in2="blueMatch" operator="in" result="waterMask"/>
       <feFlood flood-color="#1e90ff" result="waterColor"/>
       <feComposite in="waterColor" in2="waterMask" operator="in" result="recoloredWater"/>
-      <feComposite in="recoloredWater" in2="SourceGraphic" operator="over"/>
+      <!-- Remove thin lines from the land mask before expanding it into nearby water. -->
+      <feComposite in="SourceAlpha" in2="waterMask" operator="out" result="landMask"/>
+      <feMorphology in="landMask" operator="erode" radius="3" result="landInterior"/>
+      <feMorphology in="landInterior" operator="dilate" radius="14" result="coastalArea"/>
+      <feComposite in="coastalArea" in2="waterMask" operator="in" result="nearshoreMask"/>
+      <feFlood flood-color="#00bfff" result="nearshoreColor"/>
+      <feComposite in="nearshoreColor" in2="nearshoreMask" operator="in" result="nearshoreWater"/>
+      <feMerge>
+        <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="recoloredWater"/>
+        <feMergeNode in="nearshoreWater"/>
+      </feMerge>
     </filter>
   </svg>
   <main>
