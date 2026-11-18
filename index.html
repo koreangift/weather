@@ -7,7 +7,13 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
   <style>
     * { box-sizing: border-box; }
-    body { margin: 0; background: #f2f7fb; color: #14273b; font-family: system-ui, sans-serif; }
+    body {
+      min-height: 100vh;
+      margin: 0;
+      background: linear-gradient(165deg, #a9dcff 0%, #d5efff 48%, #f2faff 100%);
+      color: #14273b;
+      font-family: system-ui, sans-serif;
+    }
     main { max-width: 980px; margin: auto; padding: clamp(16px, 4vw, 40px); }
     h1 { margin: 0 0 8px; font-size: clamp(32px, 6vw, 52px); letter-spacing: -.06em; }
     #status { margin: 0 0 16px; color: #41566c; }
