@@ -31,8 +31,9 @@
     #district-title { margin: 0; font-size: 34px; }
     #close-districts, #retry-districts { font: inherit; color: #14273b; background: white; border: 1px solid #9d9a74; border-radius: 9px; padding: 4px 12px; cursor: pointer; }
     #district-status { margin: 6px 0; color: #223e55; }
-    #district-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 6px; }
-    #district-list li { padding: 5px 8px; background: #fffacd; border-radius: 8px; }
+    .district-pin { font: 23px/26px 'Dongle', system-ui, sans-serif; white-space: nowrap; }
+    .district-pin:focus { outline: 2px solid #155681; }
+    .leaflet-popup-content { font: 25px/1 'Dongle', system-ui, sans-serif; }
     .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0; }
     .legend span { white-space: nowrap; }
     footer { color: #41566c; font-size: 20px; }
@@ -83,7 +84,6 @@
       </div>
       <p id="district-status" role="status"></p>
       <button id="retry-districts" type="button" hidden>다시 불러오기</button>
-      <ul id="district-list"></ul>
     </section>
     <div id="map" role="region" aria-label="대한민국 주요 도시 날씨 지도"></div>
     <noscript>날씨 지도를 보려면 JavaScript를 켜 주세요.</noscript>
@@ -252,11 +252,33 @@
     const districtPanel = document.querySelector('#districts');
     const districtTitle = document.querySelector('#district-title');
     const districtStatus = document.querySelector('#district-status');
-    const districtList = document.querySelector('#district-list');
     const retryButton = document.querySelector('#retry-districts');
     let activeRequest;
     let selectedCity;
     let selectedMarker;
+    let map;
+    let nationwideBounds;
+    let cityLayer;
+    let districtLayer;
+
+    function addDistrictMarker(location, weather) {
+      const [, lat, lon] = location;
+      const { name, symbol, description, temperature } = weather;
+      const label = name + ' · ' + description + ' · ' + temperature;
+      const badge = document.createElement('span');
+      badge.textContent = symbol + (temperature.endsWith('°C') ? ' ' + temperature : '');
+      const marker = L.marker([lat, lon], {
+        icon: L.divIcon({
+          className: 'weather-pin district-pin',
+          html: badge,
+          iconSize: [48, 28],
+          iconAnchor: [24, 14]
+        })
+      }).addTo(districtLayer);
+      marker.getElement().setAttribute('aria-label', label);
+      marker.bindTooltip(label, { direction: 'top', offset: [0, -13], className: 'city-weather' });
+      marker.bindPopup(label, { offset: [0, -11] });
+    }
 
     async function showDistricts(city, marker) {
       activeRequest?.abort();
@@ -264,26 +286,28 @@
       activeRequest = request;
       selectedCity = city;
       selectedMarker = marker;
+      const locations = districts[city];
       const regionType = placesWithoutDistricts.has(city) ? '주요 지역' : '구·군별';
-      districtTitle.textContent = city + ' ' + regionType + ' 날씨';
+      const title = city + ' ' + regionType + ' 날씨';
+      districtTitle.textContent = title;
       districtStatus.textContent = '현재 날씨를 불러오는 중이에요.';
-      districtList.replaceChildren();
       retryButton.hidden = true;
       districtPanel.hidden = false;
       marker.closeTooltip();
+      cityLayer.remove();
+      districtLayer.clearLayers();
+      map.closePopup();
+      map.getContainer().setAttribute('aria-label', title + ' 지도');
+      map.fitBounds(locations.map(([, lat, lon]) => [lat, lon]), { padding: [40, 40], maxZoom: 12, animate: false });
       districtTitle.focus();
       try {
-        const weather = await fetchWeather(districts[city], request.signal);
+        const weather = await fetchWeather(locations, request.signal);
         if (request.signal.aborted) return;
-        const rows = weather.map(({ name, symbol, description, temperature }) => {
-          const row = document.createElement('li');
-          row.textContent = symbol + ' ' + name + ' · ' + description + ' · ' + temperature;
-          return row;
-        });
-        districtList.replaceChildren(...rows);
-        districtStatus.textContent = rows.length + '곳의 대표 지점 기준 현재 날씨예요.';
+        weather.forEach((entry, index) => addDistrictMarker(locations[index], entry));
+        districtStatus.textContent = '지도에 ' + weather.length + '곳의 현재 날씨를 표시했어요. 기호를 누르면 지역 이름과 날씨가 나와요.';
       } catch (error) {
         if (request.signal.aborted) return;
+        districtLayer.clearLayers();
         districtStatus.textContent = '날씨를 불러오지 못했어요.';
         retryButton.hidden = false;
       }
@@ -291,16 +315,23 @@
 
     document.querySelector('#close-districts').addEventListener('click', () => {
       activeRequest?.abort();
+      map.closePopup();
+      districtLayer.clearLayers();
       districtPanel.hidden = true;
-      selectedMarker?.getElement().focus();
+      map.getContainer().setAttribute('aria-label', '대한민국 주요 도시 날씨 지도');
+      cityLayer.addTo(map);
+      map.fitBounds(nationwideBounds, { padding: [34, 34], animate: false });
+      selectedMarker?.getElement().focus({ preventScroll: true });
     });
     retryButton.addEventListener('click', () => showDistricts(selectedCity, selectedMarker));
 
     async function showWeather() {
       const status = document.querySelector('#status');
       try {
-        const bounds = L.latLngBounds(cities.map(([, lat, lon]) => [lat, lon]));
-        const map = L.map('map', { zoomSnap: 0.25 }).fitBounds(bounds, { padding: [34, 34] });
+        nationwideBounds = L.latLngBounds(cities.map(([, lat, lon]) => [lat, lon]));
+        map = L.map('map', { zoomSnap: 0.25 }).fitBounds(nationwideBounds, { padding: [34, 34] });
+        cityLayer = L.layerGroup().addTo(map);
+        districtLayer = L.layerGroup().addTo(map);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -312,19 +343,24 @@
           const label = name + ' · ' + description + ' · ' + temperature;
           const marker = L.marker([lat, lon], {
             icon: L.divIcon({ className: 'weather-pin', html: symbol, iconSize: [34, 34], iconAnchor: [17, 17] })
-          }).addTo(map);
-          const pin = marker.getElement();
-          pin.setAttribute('aria-label', label + ' · 상세 날씨 보기');
+          }).addTo(cityLayer);
           marker.bindTooltip(label, { direction: 'top', offset: [0, -18], className: 'city-weather' });
           marker.on('click', () => showDistricts(name, marker));
-          pin.addEventListener('focus', () => marker.openTooltip());
-          pin.addEventListener('blur', () => marker.closeTooltip());
-          pin.addEventListener('keydown', (event) => {
-            if (event.key === ' ') {
-              event.preventDefault();
-              showDistricts(name, marker);
-            }
-          });
+          const configurePin = () => {
+            const pin = marker.getElement();
+            pin.setAttribute('aria-label', label + ' · 상세 날씨 보기');
+            pin.addEventListener('focus', () => marker.openTooltip());
+            pin.addEventListener('blur', () => marker.closeTooltip());
+            pin.addEventListener('keydown', (event) => {
+              if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                event.stopPropagation();
+                showDistricts(name, marker);
+              }
+            });
+          };
+          marker.on('add', configurePin);
+          configurePin();
         });
         status.textContent = '기호에 마우스를 올리면 현재 날씨가 나오고, 누르면 지역별 날씨를 볼 수 있어요.';
       } catch (error) {
