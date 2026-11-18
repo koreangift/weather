@@ -57,8 +57,13 @@
       73% { opacity: .8; }
       100% { transform: translate(-2px, 12px) rotate(14deg); opacity: 0; }
     }
+    .cloud-drift { display: inline-block; animation: cloud-drift 3.8s ease-in-out infinite; }
+    @keyframes cloud-drift {
+      0%, 100% { transform: translateX(-3px); }
+      50% { transform: translateX(3px); }
+    }
     @media (prefers-reduced-motion: reduce) {
-      .sun-sparkle, .rain-fall::before, .rain-fall::after { animation: none; }
+      .sun-sparkle, .rain-fall::before, .rain-fall::after, .cloud-drift { animation: none; }
     }
     .district-pin { display: grid; align-content: center; justify-items: center; gap: 1px; font: 21px/15px 'Dongle', system-ui, sans-serif; white-space: nowrap; border-radius: 11px; }
     .district-pin-content { display: grid; gap: 1px; }
@@ -315,6 +320,7 @@
       const icon = document.createElement('span');
       icon.textContent = symbol;
       if (symbol === '☀️') icon.className = 'sun-sparkle';
+      if (symbol === '⛅' || symbol === '☁️') icon.className = 'cloud-drift';
       if (symbol === '🌧️' || symbol === '⛈️') icon.className = 'rain-fall';
       return icon;
     }
