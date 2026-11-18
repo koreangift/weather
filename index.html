@@ -1,11 +1,100 @@
 <!doctype html>
 <html lang="ko">
 <head>
-  <meta charset="UTF-8">
-  <title>서울 날씨</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>전국 날씨</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f2f7fb; color: #14273b; font-family: system-ui, sans-serif; }
+    main { max-width: 980px; margin: auto; padding: clamp(16px, 4vw, 40px); }
+    h1 { margin: 0 0 8px; font-size: clamp(32px, 6vw, 52px); letter-spacing: -.06em; }
+    #status { margin: 0 0 16px; color: #41566c; }
+    #map { height: clamp(410px, 66vh, 680px); border-radius: 20px; background: #dbeaf4; box-shadow: 0 8px 32px #163d6020; }
+    .weather-pin { background: white; border: 1px solid #ccdce7; border-radius: 18px; font-weight: 750; color: #14273b; line-height: 32px; text-align: center; box-shadow: 0 2px 8px #14273b26; }
+    .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0; }
+    .legend span { white-space: nowrap; }
+    footer { color: #41566c; font-size: .875rem; }
+    a { color: #155681; }
+  </style>
 </head>
 <body>
-  <h1>서울 날씨</h1>
-  <p>여기에 현재 기온을 표시할 거예요.</p>
+  <main>
+    <h1>전국 날씨</h1>
+    <p id="status" role="status">주요 도시의 현재 날씨를 불러오는 중이에요.</p>
+    <div id="map" role="region" aria-label="대한민국 주요 도시 날씨 지도"></div>
+    <noscript>날씨 지도를 보려면 JavaScript를 켜 주세요.</noscript>
+    <div class="legend" aria-label="날씨 기호">
+      <span>☀️ 맑음</span><span>🌙 맑은 밤</span><span>⛅ 구름 조금</span><span>☁️ 흐림</span><span>🌫️ 안개</span><span>🌧️ 비</span><span>❄️ 눈</span><span>⛈️ 뇌우</span>
+    </div>
+    <footer>날씨 데이터 <a href="https://open-meteo.com/">Open-Meteo</a> · <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a> · <a href="https://www.openstreetmap.org/fixthemap">지도 오류 신고</a></footer>
+  </main>
+  <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    const cities = [
+      ['서울', 37.5665, 126.978], ['춘천', 37.8813, 127.73],
+      ['강릉', 37.7519, 128.8761], ['청주', 36.6424, 127.489],
+      ['대전', 36.3504, 127.3845], ['전주', 35.8242, 127.148],
+      ['광주', 35.1595, 126.8526], ['대구', 35.8714, 128.6014],
+      ['부산', 35.1796, 129.0756], ['제주', 33.4996, 126.5312],
+      ['울릉', 37.4845, 130.9057]
+    ];
+
+    function weatherSymbol(code, isDay) {
+      if (code === 0) return [isDay ? '☀️' : '🌙', '맑음'];
+      if (code === 1 || code === 2) return ['⛅', '구름 조금'];
+      if (code === 3) return ['☁️', '흐림'];
+      if ([45, 48].includes(code)) return ['🌫️', '안개'];
+      if ([51, 53, 55, 56, 57, 61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return ['🌧️', '비'];
+      if ([71, 73, 75, 77, 85, 86].includes(code)) return ['❄️', '눈'];
+      if ([95, 96, 99].includes(code)) return ['⛈️', '뇌우'];
+      return ['·', '날씨 정보 없음'];
+    }
+
+    async function showWeather() {
+      const status = document.querySelector('#status');
+      try {
+        const bounds = L.latLngBounds(cities.map(([, lat, lon]) => [lat, lon]));
+        const map = L.map('map', { zoomSnap: 0.25 }).fitBounds(bounds, { padding: [34, 34] });
+        L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          maxZoom: 19,
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        const query = new URLSearchParams({
+          latitude: cities.map(([, lat]) => lat).join(','),
+          longitude: cities.map(([, , lon]) => lon).join(','),
+          current: 'temperature_2m,weather_code,is_day',
+          timezone: 'Asia/Seoul',
+          forecast_days: '1'
+        });
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?' + query);
+        if (!response.ok) throw new Error('날씨 요청에 실패했어요.');
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length !== cities.length) throw new Error('날씨 응답을 확인할 수 없어요.');
+
+        cities.forEach(([name, lat, lon], index) => {
+          const current = data[index].current ?? {};
+          const [symbol, description] = weatherSymbol(current.weather_code, current.is_day);
+          const temperature = Number.isFinite(current.temperature_2m) ? Math.round(current.temperature_2m) + '°C' : '기온 정보 없음';
+          const label = name + ' ' + description + ' ' + temperature;
+          const marker = L.marker([lat, lon], {
+            icon: L.divIcon({ className: 'weather-pin', html: symbol, iconSize: [34, 34], iconAnchor: [17, 17] }),
+            title: label,
+            alt: label
+          }).addTo(map);
+          marker.getElement().setAttribute('aria-label', label);
+          marker.bindPopup('<strong>' + name + '</strong><br>' + description + ' · ' + temperature, { offset: [0, -12] });
+        });
+        status.textContent = '주요 도시 11곳의 현재 날씨예요. 기호를 누르면 도시 이름과 기온이 나와요.';
+      } catch (error) {
+        status.textContent = '날씨 지도를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.';
+        console.error(error);
+      }
+    }
+
+    showWeather();
+  </script>
 </body>
 </html>
