@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>전국 날씨</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&amp;display=swap">
   <style>
     * { box-sizing: border-box; }
     body {
@@ -12,13 +15,15 @@
       margin: 0;
       background: linear-gradient(165deg, #a9dcff 0%, #d5efff 48%, #f2faff 100%);
       color: #14273b;
-      font-family: system-ui, sans-serif;
+      font-family: 'Jua', system-ui, sans-serif;
     }
     main { max-width: 980px; margin: auto; padding: clamp(16px, 4vw, 40px); }
-    h1 { margin: 0 0 8px; font-size: clamp(32px, 6vw, 52px); letter-spacing: -.06em; }
+    h1 { margin: 0 0 8px; font-size: clamp(32px, 6vw, 52px); font-weight: 400; letter-spacing: -.02em; }
     #status { margin: 0 0 16px; color: #41566c; }
     #map { height: clamp(410px, 66vh, 680px); border-radius: 20px; background: #dbeaf4; box-shadow: 0 8px 32px #163d6020; }
     .weather-pin { background: white; border: 1px solid #ccdce7; border-radius: 18px; font-weight: 750; color: #14273b; line-height: 32px; text-align: center; box-shadow: 0 2px 8px #14273b26; }
+    .leaflet-popup-content { font-family: 'Jua', system-ui, sans-serif; font-size: 1rem; }
+    .leaflet-popup-content strong { font-weight: 400; }
     .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0; }
     .legend span { white-space: nowrap; }
     footer { color: #41566c; font-size: .875rem; }
