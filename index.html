@@ -31,6 +31,14 @@
     #district-title { margin: 0; font-size: 34px; }
     #close-districts, #retry-districts { font: inherit; color: #14273b; background: white; border: 1px solid #9d9a74; border-radius: 9px; padding: 4px 12px; cursor: pointer; }
     #district-status { margin: 6px 0; color: #223e55; }
+    .sun-sparkle { display: inline-block; animation: sunlight 2.8s ease-in-out infinite; }
+    @keyframes sunlight {
+      0%, 100% { transform: scale(1); filter: drop-shadow(0 0 1px #ffc83d40); }
+      50% { transform: scale(1.17); filter: drop-shadow(0 0 5px #ffbf00d9); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .sun-sparkle { animation: none; }
+    }
     .district-pin { display: grid; align-content: center; justify-items: center; gap: 1px; font: 21px/15px 'Dongle', system-ui, sans-serif; white-space: nowrap; border-radius: 11px; }
     .district-pin-content { display: grid; gap: 1px; }
     .district-name { font-size: 22px; font-weight: 700; }
@@ -282,12 +290,20 @@
     let cityLayer;
     let districtLayer;
 
+    function weatherIcon(symbol) {
+      const icon = document.createElement('span');
+      icon.textContent = symbol;
+      if (symbol === '☀️') icon.className = 'sun-sparkle';
+      return icon;
+    }
+
     function addDistrictMarker(location, weather) {
       const [, lat, lon] = location;
       const { name, symbol, description, temperature } = weather;
       const label = name + ' · ' + description + ' · ' + temperature;
       const badge = document.createElement('span');
-      badge.textContent = symbol + (temperature.endsWith('°C') ? ' ' + temperature : '');
+      badge.append(weatherIcon(symbol));
+      if (temperature.endsWith('°C')) badge.append(' ' + temperature);
       const nameLabel = document.createElement('span');
       nameLabel.className = 'district-name';
       nameLabel.textContent = name;
@@ -369,7 +385,7 @@
           const { symbol, description, temperature } = weather[index];
           const label = name + ' · ' + description + ' · ' + temperature;
           const marker = L.marker([lat, lon], {
-            icon: L.divIcon({ className: 'weather-pin', html: symbol, iconSize: [34, 34], iconAnchor: [17, 17] })
+            icon: L.divIcon({ className: 'weather-pin', html: weatherIcon(symbol), iconSize: [34, 34], iconAnchor: [17, 17] })
           }).addTo(cityLayer);
           marker.bindTooltip(label, { direction: 'top', offset: [0, -18], className: 'city-weather' });
           marker.on('click', () => showDistricts(name, marker));
