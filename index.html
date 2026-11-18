@@ -31,7 +31,10 @@
     #district-title { margin: 0; font-size: 34px; }
     #close-districts, #retry-districts { font: inherit; color: #14273b; background: white; border: 1px solid #9d9a74; border-radius: 9px; padding: 4px 12px; cursor: pointer; }
     #district-status { margin: 6px 0; color: #223e55; }
-    .district-pin { font: 23px/26px 'Dongle', system-ui, sans-serif; white-space: nowrap; }
+    .district-pin { display: grid; align-content: center; justify-items: center; gap: 1px; font: 21px/15px 'Dongle', system-ui, sans-serif; white-space: nowrap; border-radius: 11px; }
+    .district-pin-content { display: grid; gap: 1px; }
+    .district-name { font-size: 22px; font-weight: 700; }
+    .district-pin:hover, .district-pin:focus { z-index: 1000 !important; }
     .district-pin:focus { outline: 2px solid #155681; }
     .leaflet-popup-content { font: 25px/1 'Dongle', system-ui, sans-serif; }
     .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0; }
@@ -267,17 +270,23 @@
       const label = name + ' · ' + description + ' · ' + temperature;
       const badge = document.createElement('span');
       badge.textContent = symbol + (temperature.endsWith('°C') ? ' ' + temperature : '');
+      const nameLabel = document.createElement('span');
+      nameLabel.className = 'district-name';
+      nameLabel.textContent = name;
+      const pinContent = document.createElement('span');
+      pinContent.className = 'district-pin-content';
+      pinContent.append(badge, nameLabel);
       const marker = L.marker([lat, lon], {
         icon: L.divIcon({
           className: 'weather-pin district-pin',
-          html: badge,
-          iconSize: [48, 28],
-          iconAnchor: [24, 14]
+          html: pinContent,
+          iconSize: [60, 39],
+          iconAnchor: [30, 19]
         })
       }).addTo(districtLayer);
       marker.getElement().setAttribute('aria-label', label);
-      marker.bindTooltip(label, { direction: 'top', offset: [0, -13], className: 'city-weather' });
-      marker.bindPopup(label, { offset: [0, -11] });
+      marker.bindTooltip(label, { direction: 'top', offset: [0, -21], className: 'city-weather' });
+      marker.bindPopup(label, { offset: [0, -18] });
     }
 
     async function showDistricts(city, marker) {
