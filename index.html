@@ -158,6 +158,111 @@
       ['울릉', 37.4845, 130.9057]
     ];
 
+    const additionalPlaces = [
+      ["인천",37.456,126.705],
+      ["수원",37.263,127.028],
+      ["고양",37.658,126.832],
+      ["파주",37.76,126.78],
+      ["의정부",37.738,127.034],
+      ["포천",37.894,127.2],
+      ["남양주",37.636,127.216],
+      ["성남",37.42,127.126],
+      ["용인",37.241,127.177],
+      ["화성",37.2,126.831],
+      ["평택",36.992,127.113],
+      ["이천",37.272,127.435],
+      ["양평",37.491,127.487],
+      ["여주",37.298,127.637],
+      ["강화",37.747,126.487],
+      ["백령도",37.969,124.716],
+      ["철원",38.147,127.313],
+      ["화천",38.106,127.708],
+      ["양구",38.11,127.99],
+      ["인제",38.069,128.171],
+      ["속초",38.207,128.591],
+      ["고성",38.38,128.468],
+      ["홍천",37.697,127.888],
+      ["원주",37.342,127.92],
+      ["횡성",37.491,127.985],
+      ["평창",37.37,128.39],
+      ["정선",37.38,128.661],
+      ["동해",37.525,129.114],
+      ["삼척",37.45,129.165],
+      ["태백",37.165,128.986],
+      ["영월",37.183,128.461],
+      ["충주",36.991,127.926],
+      ["제천",37.132,128.191],
+      ["단양",36.984,128.365],
+      ["음성",36.94,127.69],
+      ["천안",36.815,127.114],
+      ["아산",36.789,127.002],
+      ["당진",36.89,126.629],
+      ["서산",36.784,126.45],
+      ["태안",36.745,126.298],
+      ["홍성",36.602,126.661],
+      ["보령",36.333,126.612],
+      ["공주",36.446,127.119],
+      ["세종",36.48,127.289],
+      ["논산",36.188,127.099],
+      ["영동",36.175,127.776],
+      ["군산",35.968,126.736],
+      ["익산",35.949,126.957],
+      ["김제",35.803,126.881],
+      ["부안",35.732,126.733],
+      ["정읍",35.57,126.856],
+      ["남원",35.416,127.391],
+      ["무주",36.007,127.661],
+      ["목포",34.812,126.392],
+      ["무안",34.991,126.481],
+      ["영광",35.277,126.512],
+      ["나주",35.015,126.711],
+      ["진도",34.486,126.263],
+      ["해남",34.573,126.599],
+      ["완도",34.311,126.755],
+      ["강진",34.642,126.767],
+      ["보성",34.771,127.08],
+      ["고흥",34.612,127.285],
+      ["순천",34.951,127.487],
+      ["여수",34.76,127.662],
+      ["광양",34.941,127.696],
+      ["구례",35.203,127.463],
+      ["안동",36.568,128.729],
+      ["영주",36.805,128.624],
+      ["문경",36.587,128.187],
+      ["상주",36.41,128.159],
+      ["구미",36.12,128.345],
+      ["김천",36.139,128.113],
+      ["의성",36.352,128.697],
+      ["청송",36.435,129.057],
+      ["영양",36.667,129.113],
+      ["울진",36.993,129.4],
+      ["영덕",36.415,129.365],
+      ["포항",36.019,129.343],
+      ["경주",35.857,129.225],
+      ["영천",35.973,128.938],
+      ["경산",35.826,128.741],
+      ["울산",35.538,129.311],
+      ["양산",35.335,129.038],
+      ["김해",35.228,128.889],
+      ["창원",35.228,128.681],
+      ["밀양",35.504,128.747],
+      ["창녕",35.544,128.493],
+      ["합천",35.566,128.165],
+      ["거창",35.686,127.909],
+      ["함양",35.52,127.726],
+      ["산청",35.415,127.873],
+      ["진주",35.18,128.108],
+      ["사천",35.003,128.065],
+      ["하동",35.067,127.751],
+      ["남해",34.837,127.892],
+      ["통영",34.854,128.434],
+      ["거제",34.881,128.621],
+      ["서귀포",33.254,126.56],
+      ["성산",33.462,126.935],
+      ["대정",33.226,126.253],
+      ["중문",33.253,126.427]
+    ];
+
     const districts = {
       '서울': [
         ["종로구",37.573,126.979],
@@ -315,6 +420,12 @@
     let nationwideBounds;
     let cityLayer;
     let districtLayer;
+    let nearbyLayer;
+    let nearbyRequest;
+    let nearbyTimer;
+    let detailBounds;
+    let nearbyKeys = '';
+    const nearbyCache = new Map();
 
     function weatherIcon(symbol) {
       const icon = document.createElement('span');
@@ -325,7 +436,7 @@
       return icon;
     }
 
-    function addDistrictMarker(location, weather) {
+    function addLocalMarker(layer, location, weather) {
       const [, lat, lon] = location;
       const { name, symbol, description, temperature } = weather;
       const label = name + ' · ' + description + ' · ' + temperature;
@@ -345,10 +456,80 @@
           iconSize: [60, 39],
           iconAnchor: [30, 19]
         })
-      }).addTo(districtLayer);
+      }).addTo(layer);
       marker.getElement().setAttribute('aria-label', label);
       marker.bindTooltip(label, { direction: 'top', offset: [0, -21], className: 'city-weather' });
       marker.bindPopup(label, { offset: [0, -18] });
+    }
+
+    function clearNearbyWeather() {
+      nearbyRequest?.abort();
+      clearTimeout(nearbyTimer);
+      nearbyLayer.clearLayers();
+      nearbyKeys = '';
+    }
+
+    function visiblePlaces() {
+      const viewport = map.getBounds();
+      const center = map.getCenter();
+      const occupied = cities
+        .filter(([, lat, lon]) => viewport.contains([lat, lon]))
+        .map(([, lat, lon]) => map.latLngToContainerPoint([lat, lon]));
+      const candidates = additionalPlaces
+        .filter(([, lat, lon]) => viewport.contains([lat, lon]))
+        .sort(([, aLat, aLon], [, bLat, bLon]) => center.distanceTo([aLat, aLon]) - center.distanceTo([bLat, bLon]));
+      const visible = [];
+      const size = map.getSize();
+      for (const location of candidates) {
+        const [, lat, lon] = location;
+        const point = map.latLngToContainerPoint([lat, lon]);
+        if (point.x < 32 || point.y < 25 || point.x > size.x - 32 || point.y > size.y - 25) continue;
+        if (occupied.some(other => Math.abs(other.x - point.x) < 66 && Math.abs(other.y - point.y) < 45)) continue;
+        occupied.push(point);
+        visible.push(location);
+        if (visible.length === 16) break;
+      }
+      return visible;
+    }
+
+    async function updateNearbyWeather() {
+      if (!districtPanel.hidden) return;
+      const visible = visiblePlaces();
+      const now = Date.now();
+      const missing = visible.filter(([name]) => (nearbyCache.get(name)?.expires ?? 0) <= now);
+      const keys = visible.map(([name]) => name).sort().join('|');
+      if (keys === nearbyKeys && !missing.length) return;
+
+      nearbyRequest?.abort();
+      const request = new AbortController();
+      nearbyRequest = request;
+      try {
+        if (missing.length) {
+          const weather = await fetchWeather(missing, request.signal);
+          if (request.signal.aborted) return;
+          for (const entry of weather) {
+            nearbyCache.set(entry.name, { weather: entry, expires: Date.now() + 5 * 60 * 1000 });
+          }
+        }
+      } catch (error) {
+        if (request.signal.aborted) return;
+      }
+      nearbyLayer.clearLayers();
+      for (const location of visible) {
+        const entry = nearbyCache.get(location[0]);
+        if (entry) addLocalMarker(nearbyLayer, location, entry.weather);
+      }
+      nearbyKeys = keys;
+    }
+
+    function scheduleNearbyWeather() {
+      nearbyRequest?.abort();
+      clearTimeout(nearbyTimer);
+      if (!districtPanel.hidden) {
+        if (detailBounds.contains(map.getCenter())) return;
+        closeDistricts(false);
+      }
+      nearbyTimer = setTimeout(updateNearbyWeather, 220);
     }
 
     async function showDistricts(city, marker) {
@@ -364,17 +545,20 @@
       districtStatus.textContent = '현재 날씨를 불러오는 중이에요.';
       retryButton.hidden = true;
       districtPanel.hidden = false;
+      clearNearbyWeather();
       marker.closeTooltip();
       cityLayer.remove();
       districtLayer.clearLayers();
       map.closePopup();
       map.getContainer().setAttribute('aria-label', title + ' 지도');
-      map.fitBounds(locations.map(([, lat, lon]) => [lat, lon]), { padding: [40, 40], maxZoom: 12, animate: false });
+      const bounds = L.latLngBounds(locations.map(([, lat, lon]) => [lat, lon]));
+      detailBounds = bounds.pad(.3);
+      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 12, animate: false });
       districtTitle.focus();
       try {
         const weather = await fetchWeather(locations, request.signal);
         if (request.signal.aborted) return;
-        weather.forEach((entry, index) => addDistrictMarker(locations[index], entry));
+        weather.forEach((entry, index) => addLocalMarker(districtLayer, locations[index], entry));
         districtStatus.textContent = '지도에 ' + weather.length + '곳의 현재 날씨를 표시했어요. 기호를 누르면 지역 이름과 날씨가 나와요.';
       } catch (error) {
         if (request.signal.aborted) return;
@@ -384,16 +568,20 @@
       }
     }
 
-    document.querySelector('#close-districts').addEventListener('click', () => {
+    function closeDistricts(resetView) {
       activeRequest?.abort();
       map.closePopup();
       districtLayer.clearLayers();
       districtPanel.hidden = true;
       map.getContainer().setAttribute('aria-label', '대한민국 주요 도시 날씨 지도');
       cityLayer.addTo(map);
-      map.fitBounds(nationwideBounds, { padding: [34, 34], animate: false });
-      selectedMarker?.getElement().focus({ preventScroll: true });
-    });
+      if (resetView) {
+        map.fitBounds(nationwideBounds, { padding: [34, 34], animate: false });
+        selectedMarker?.getElement().focus({ preventScroll: true });
+      }
+    }
+
+    document.querySelector('#close-districts').addEventListener('click', () => closeDistricts(true));
     retryButton.addEventListener('click', () => showDistricts(selectedCity, selectedMarker));
 
     async function showWeather() {
@@ -403,6 +591,7 @@
         map = L.map('map', { zoomSnap: 0.25 }).fitBounds(nationwideBounds, { padding: [34, 34] });
         cityLayer = L.layerGroup().addTo(map);
         districtLayer = L.layerGroup().addTo(map);
+        nearbyLayer = L.layerGroup().addTo(map);
         L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
           maxZoom: 19,
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -433,7 +622,8 @@
           marker.on('add', configurePin);
           configurePin();
         });
-        status.textContent = '기호에 마우스를 올리면 현재 날씨가 나오고, 누르면 지역별 날씨를 볼 수 있어요.';
+        map.on('moveend', scheduleNearbyWeather);
+        status.textContent = '지도를 움직이면 다른 지역 날씨가 나타나요. 도시 기호를 누르면 상세 날씨를 볼 수 있어요.';
       } catch (error) {
         status.textContent = '날씨 지도를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.';
         console.error(error);
