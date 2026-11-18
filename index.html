@@ -70,8 +70,26 @@
       <feComposite in="coastalArea" in2="waterMask" operator="in" result="nearshoreMask"/>
       <feFlood flood-color="#00bfff" result="nearshoreColor"/>
       <feComposite in="nearshoreColor" in2="nearshoreMask" operator="in" result="nearshoreWater"/>
+      <!-- Match the OpenStreetMap Carto forest and wood fill (#add19e). -->
+      <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  1 0 0 0 0"/>
+      <feComponentTransfer result="forestRed">
+        <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+      </feComponentTransfer>
+      <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 1 0 0 0"/>
+      <feComponentTransfer result="forestGreen">
+        <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0"/>
+      </feComponentTransfer>
+      <feColorMatrix in="SourceGraphic" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 1 0 0"/>
+      <feComponentTransfer result="forestBlue">
+        <feFuncA type="discrete" tableValues="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 1 1 1 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0"/>
+      </feComponentTransfer>
+      <feComposite in="forestRed" in2="forestGreen" operator="in" result="forestRedGreen"/>
+      <feComposite in="forestRedGreen" in2="forestBlue" operator="in" result="forestMask"/>
+      <feFlood flood-color="#228b22" result="forestColor"/>
+      <feComposite in="forestColor" in2="forestMask" operator="in" result="recoloredForest"/>
       <feMerge>
         <feMergeNode in="SourceGraphic"/>
+        <feMergeNode in="recoloredForest"/>
         <feMergeNode in="recoloredWater"/>
         <feMergeNode in="nearshoreWater"/>
       </feMerge>
