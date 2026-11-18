@@ -25,8 +25,14 @@
     #map { height: clamp(410px, 66vh, 680px); border-radius: 20px; background: #1e90ff; box-shadow: 0 8px 32px #163d6020; }
     .leaflet-tile { filter: url(#dodger-blue-water); }
     .weather-pin { background: white; border: 1px solid #ccdce7; border-radius: 18px; font-weight: 750; color: #14273b; line-height: 32px; text-align: center; box-shadow: 0 2px 8px #14273b26; }
-    .leaflet-popup-content { font-family: 'Dongle', system-ui, sans-serif; font-size: 25px; line-height: 1; }
-    .leaflet-popup-content strong { font-weight: 400; }
+    .leaflet-tooltip.city-weather { font-family: 'Dongle', system-ui, sans-serif; font-size: 23px; padding: 4px 10px; }
+    #districts { margin: 0 0 16px; padding: 14px; background: #fffef3; border: 1px solid #e1d892; border-radius: 16px; }
+    .district-header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+    #district-title { margin: 0; font-size: 34px; }
+    #close-districts, #retry-districts { font: inherit; color: #14273b; background: white; border: 1px solid #9d9a74; border-radius: 9px; padding: 4px 12px; cursor: pointer; }
+    #district-status { margin: 6px 0; color: #223e55; }
+    #district-list { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 175px), 1fr)); gap: 6px; }
+    #district-list li { padding: 5px 8px; background: #fffacd; border-radius: 8px; }
     .legend { display: flex; flex-wrap: wrap; gap: 8px 16px; margin: 16px 0; }
     .legend span { white-space: nowrap; }
     footer { color: #41566c; font-size: 20px; }
@@ -59,6 +65,15 @@
   <main>
     <h1>전국 날씨</h1>
     <p id="status" role="status">주요 도시의 현재 날씨를 불러오는 중이에요.</p>
+    <section id="districts" aria-labelledby="district-title" hidden>
+      <div class="district-header">
+        <h2 id="district-title" tabindex="-1"></h2>
+        <button id="close-districts" type="button">전국 지도 보기</button>
+      </div>
+      <p id="district-status" role="status"></p>
+      <button id="retry-districts" type="button" hidden>다시 불러오기</button>
+      <ul id="district-list"></ul>
+    </section>
     <div id="map" role="region" aria-label="대한민국 주요 도시 날씨 지도"></div>
     <noscript>날씨 지도를 보려면 JavaScript를 켜 주세요.</noscript>
     <div class="legend" aria-label="날씨 기호">
@@ -77,6 +92,121 @@
       ['울릉', 37.4845, 130.9057]
     ];
 
+    const districts = {
+      '서울': [
+        ["종로구",37.573,126.979],
+        ["중구",37.564,126.998],
+        ["용산구",37.532,126.99],
+        ["성동구",37.563,127.037],
+        ["광진구",37.538,127.082],
+        ["동대문구",37.574,127.039],
+        ["중랑구",37.606,127.093],
+        ["성북구",37.589,127.016],
+        ["강북구",37.64,127.025],
+        ["도봉구",37.669,127.047],
+        ["노원구",37.654,127.057],
+        ["은평구",37.602,126.929],
+        ["서대문구",37.579,126.937],
+        ["마포구",37.566,126.901],
+        ["양천구",37.517,126.866],
+        ["강서구",37.551,126.85],
+        ["구로구",37.495,126.888],
+        ["금천구",37.457,126.896],
+        ["영등포구",37.526,126.896],
+        ["동작구",37.512,126.94],
+        ["관악구",37.479,126.951],
+        ["서초구",37.483,127.032],
+        ["강남구",37.517,127.047],
+        ["송파구",37.514,127.106],
+        ["강동구",37.53,127.124]
+      ],
+      '부산': [
+        ["중구",35.106,129.033],
+        ["서구",35.098,129.024],
+        ["동구",35.129,129.045],
+        ["영도구",35.091,129.068],
+        ["부산진구",35.163,129.053],
+        ["동래구",35.207,129.08],
+        ["남구",35.137,129.085],
+        ["북구",35.197,128.99],
+        ["해운대구",35.163,129.164],
+        ["사하구",35.105,128.975],
+        ["금정구",35.243,129.092],
+        ["강서구",35.213,128.98],
+        ["연제구",35.176,129.079],
+        ["수영구",35.145,129.113],
+        ["사상구",35.152,128.991],
+        ["기장군",35.244,129.222]
+      ],
+      '대구': [
+        ["중구",35.869,128.606],
+        ["동구",35.886,128.635],
+        ["서구",35.872,128.559],
+        ["남구",35.846,128.598],
+        ["북구",35.886,128.583],
+        ["수성구",35.858,128.631],
+        ["달서구",35.829,128.532],
+        ["달성군",35.775,128.431],
+        ["군위군",36.242,128.572]
+      ],
+      '광주': [
+        ["동구",35.146,126.923],
+        ["서구",35.152,126.89],
+        ["남구",35.133,126.902],
+        ["북구",35.174,126.912],
+        ["광산구",35.139,126.794]
+      ],
+      '대전': [
+        ["동구",36.312,127.454],
+        ["중구",36.325,127.421],
+        ["서구",36.355,127.383],
+        ["유성구",36.363,127.356],
+        ["대덕구",36.347,127.415]
+      ],
+      '청주': [
+        ["상당구",36.589,127.509],
+        ["서원구",36.637,127.481],
+        ["흥덕구",36.626,127.359],
+        ["청원구",36.65,127.486]
+      ],
+      '전주': [
+        ["완산구",35.813,127.12],
+        ["덕진구",35.829,127.134]
+      ],
+      '춘천': [
+        ["춘천 도심",37.881,127.73],
+        ["신북읍",37.925,127.749],
+        ["동면",37.909,127.781],
+        ["남산면",37.792,127.645],
+        ["서면",37.898,127.692],
+        ["사북면",38.03,127.64]
+      ],
+      '강릉': [
+        ["강릉 도심",37.752,128.876],
+        ["주문진읍",37.892,128.819],
+        ["성산면",37.718,128.833],
+        ["왕산면",37.673,128.838],
+        ["옥계면",37.612,129.033],
+        ["경포",37.796,128.91]
+      ],
+      '제주': [
+        ["제주 도심",33.5,126.531],
+        ["애월읍",33.465,126.319],
+        ["한림읍",33.41,126.263],
+        ["한경면",33.351,126.185],
+        ["조천읍",33.537,126.635],
+        ["구좌읍",33.523,126.856],
+        ["추자면",33.962,126.297],
+        ["우도면",33.507,126.955]
+      ],
+      '울릉': [
+        ["울릉읍",37.485,130.905],
+        ["서면",37.454,130.841],
+        ["북면",37.542,130.875]
+      ]
+    };
+    const placesWithoutDistricts = new Set(['춘천', '강릉', '제주', '울릉']);
+
     function weatherSymbol(code, isDay) {
       if (code === 0) return [isDay ? '☀️' : '🌙', '맑음'];
       if (code === 1 || code === 2) return ['⛅', '구름 조금'];
@@ -88,6 +218,73 @@
       return ['·', '날씨 정보 없음'];
     }
 
+    async function fetchWeather(locations, signal) {
+      const query = new URLSearchParams({
+        latitude: locations.map(([, lat]) => lat).join(','),
+        longitude: locations.map(([, , lon]) => lon).join(','),
+        current: 'temperature_2m,weather_code,is_day',
+        timezone: 'Asia/Seoul',
+        forecast_days: '1'
+      });
+      const response = await fetch('https://api.open-meteo.com/v1/forecast?' + query, { signal });
+      if (!response.ok) throw new Error('날씨 요청에 실패했어요.');
+      const payload = await response.json();
+      const data = Array.isArray(payload) ? payload : [payload];
+      if (data.length !== locations.length) throw new Error('날씨 응답을 확인할 수 없어요.');
+      return data.map(({ current = {} }, index) => {
+        const [symbol, description] = weatherSymbol(current.weather_code, current.is_day);
+        const temperature = Number.isFinite(current.temperature_2m) ? Math.round(current.temperature_2m) + '°C' : '기온 정보 없음';
+        return { name: locations[index][0], symbol, description, temperature };
+      });
+    }
+
+    const districtPanel = document.querySelector('#districts');
+    const districtTitle = document.querySelector('#district-title');
+    const districtStatus = document.querySelector('#district-status');
+    const districtList = document.querySelector('#district-list');
+    const retryButton = document.querySelector('#retry-districts');
+    let activeRequest;
+    let selectedCity;
+    let selectedMarker;
+
+    async function showDistricts(city, marker) {
+      activeRequest?.abort();
+      const request = new AbortController();
+      activeRequest = request;
+      selectedCity = city;
+      selectedMarker = marker;
+      const regionType = placesWithoutDistricts.has(city) ? '주요 지역' : '구·군별';
+      districtTitle.textContent = city + ' ' + regionType + ' 날씨';
+      districtStatus.textContent = '현재 날씨를 불러오는 중이에요.';
+      districtList.replaceChildren();
+      retryButton.hidden = true;
+      districtPanel.hidden = false;
+      marker.closeTooltip();
+      districtTitle.focus();
+      try {
+        const weather = await fetchWeather(districts[city], request.signal);
+        if (request.signal.aborted) return;
+        const rows = weather.map(({ name, symbol, description, temperature }) => {
+          const row = document.createElement('li');
+          row.textContent = symbol + ' ' + name + ' · ' + description + ' · ' + temperature;
+          return row;
+        });
+        districtList.replaceChildren(...rows);
+        districtStatus.textContent = rows.length + '곳의 대표 지점 기준 현재 날씨예요.';
+      } catch (error) {
+        if (request.signal.aborted) return;
+        districtStatus.textContent = '날씨를 불러오지 못했어요.';
+        retryButton.hidden = false;
+      }
+    }
+
+    document.querySelector('#close-districts').addEventListener('click', () => {
+      activeRequest?.abort();
+      districtPanel.hidden = true;
+      selectedMarker?.getElement().focus();
+    });
+    retryButton.addEventListener('click', () => showDistricts(selectedCity, selectedMarker));
+
     async function showWeather() {
       const status = document.querySelector('#status');
       try {
@@ -98,32 +295,27 @@
           attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
         }).addTo(map);
 
-        const query = new URLSearchParams({
-          latitude: cities.map(([, lat]) => lat).join(','),
-          longitude: cities.map(([, , lon]) => lon).join(','),
-          current: 'temperature_2m,weather_code,is_day',
-          timezone: 'Asia/Seoul',
-          forecast_days: '1'
-        });
-        const response = await fetch('https://api.open-meteo.com/v1/forecast?' + query);
-        if (!response.ok) throw new Error('날씨 요청에 실패했어요.');
-        const data = await response.json();
-        if (!Array.isArray(data) || data.length !== cities.length) throw new Error('날씨 응답을 확인할 수 없어요.');
-
+        const weather = await fetchWeather(cities);
         cities.forEach(([name, lat, lon], index) => {
-          const current = data[index].current ?? {};
-          const [symbol, description] = weatherSymbol(current.weather_code, current.is_day);
-          const temperature = Number.isFinite(current.temperature_2m) ? Math.round(current.temperature_2m) + '°C' : '기온 정보 없음';
-          const label = name + ' ' + description + ' ' + temperature;
+          const { symbol, description, temperature } = weather[index];
+          const label = name + ' · ' + description + ' · ' + temperature;
           const marker = L.marker([lat, lon], {
-            icon: L.divIcon({ className: 'weather-pin', html: symbol, iconSize: [34, 34], iconAnchor: [17, 17] }),
-            title: label,
-            alt: label
+            icon: L.divIcon({ className: 'weather-pin', html: symbol, iconSize: [34, 34], iconAnchor: [17, 17] })
           }).addTo(map);
-          marker.getElement().setAttribute('aria-label', label);
-          marker.bindPopup('<strong>' + name + '</strong><br>' + description + ' · ' + temperature, { offset: [0, -12] });
+          const pin = marker.getElement();
+          pin.setAttribute('aria-label', label + ' · 상세 날씨 보기');
+          marker.bindTooltip(label, { direction: 'top', offset: [0, -18], className: 'city-weather' });
+          marker.on('click', () => showDistricts(name, marker));
+          pin.addEventListener('focus', () => marker.openTooltip());
+          pin.addEventListener('blur', () => marker.closeTooltip());
+          pin.addEventListener('keydown', (event) => {
+            if (event.key === ' ') {
+              event.preventDefault();
+              showDistricts(name, marker);
+            }
+          });
         });
-        status.textContent = '주요 도시 11곳의 현재 날씨예요. 기호를 누르면 도시 이름과 기온이 나와요.';
+        status.textContent = '기호에 마우스를 올리면 현재 날씨가 나오고, 누르면 지역별 날씨를 볼 수 있어요.';
       } catch (error) {
         status.textContent = '날씨 지도를 불러오지 못했어요. 잠시 뒤 새로고침해 주세요.';
         console.error(error);
